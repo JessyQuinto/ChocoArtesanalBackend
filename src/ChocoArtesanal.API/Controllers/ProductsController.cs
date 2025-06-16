@@ -1,47 +1,93 @@
-﻿using ChocoArtesanal.Application.Interfaces;
+﻿using AutoMapper;
+using ChocoArtesanal.Application.Dtos;
+using ChocoArtesanal.Application.Interfaces;
 using ChocoArtesanal.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-// NOTA: En una implementación completa, usaríamos DTOs y AutoMapper.
-// Por simplicidad, este ejemplo devuelve la entidad de dominio directamente.
+namespace ChocoArtesanal.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _productRepository;
-    private readonly ILogger<ProductsController> _logger;
+    private readonly IMapper _mapper;
 
-    public ProductsController(IProductRepository productRepository, ILogger<ProductsController> logger)
+    public ProductsController(IProductRepository productRepository, IMapper mapper)
     {
         _productRepository = productRepository;
-        _logger = logger;
+        _mapper = mapper;
     }
 
-    // GET: api/products
     [HttpGet]
     public async Task<IActionResult> GetProducts()
     {
-        _logger.LogInformation("Obteniendo todos los productos.");
         var products = await _productRepository.GetAllAsync();
-        // Aquí deberías mapear 'products' a una lista de 'ProductDto'
-        return Ok(products);
+        var productDtos = _mapper.Map<IEnumerable<ProductDto>>(products);
+        return Ok(productDtos);
     }
 
-    // GET: api/products/5
     [HttpGet("{id}")]
     public async Task<IActionResult> GetProduct(int id)
     {
-        _logger.LogInformation("Obteniendo producto con ID: {ProductId}", id);
         var product = await _productRepository.GetByIdAsync(id);
-
         if (product == null)
         {
-            _logger.LogWarning("Producto con ID: {ProductId} no encontrado.", id);
+            return NotFound();
+        }
+        var productDto = _mapper.Map<ProductDto>(product);
+        return Ok(productDto);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")] // Solo los administradores pueden crear productos
+    public async Task<IActionResult> CreateProduct([FromBody] ProductDto productDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var product = _mapper.Map<Product>(productDto);
+        var createdProduct = await _productRepository.AddAsync(product);
+        var createdProductDto = _mapper.Map<ProductDto>(createdProduct);
+
+        return CreatedAtAction(nameof(GetProduct), new { id = createdProductDto.Id }, createdProductDto);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductDto productDto)
+    {
+        if (id != productDto.Id)
+        {
+            return BadRequest("Product ID mismatch");
+        }
+
+        var product = await _productRepository.GetByIdAsync(id);
+        if (product == null)
+        {
             return NotFound();
         }
 
-        // Aquí deberías mapear 'product' a 'ProductDto'
-        return Ok(product);
+        _mapper.Map(productDto, product);
+        await _productRepository.UpdateAsync(product);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteProduct(int id)
+    {
+        var product = await _productRepository.GetByIdAsync(id);
+        if (product == null)
+        {
+            return NotFound();
+        }
+
+        await _productRepository.DeleteAsync(id);
+        return NoContent();
     }
 }
