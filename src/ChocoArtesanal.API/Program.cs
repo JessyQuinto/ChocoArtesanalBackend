@@ -14,6 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Configuración de Servicios ---
 
+// Configurar Redis
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "ChocoArtesanal_";
+});
+
 // 1. Base de Datos (Entity Framework)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

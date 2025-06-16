@@ -9,6 +9,7 @@ namespace ChocoArtesanal.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _productRepository;

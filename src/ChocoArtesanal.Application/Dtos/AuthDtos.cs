@@ -1,31 +1,13 @@
 ﻿namespace ChocoArtesanal.Application.Dtos;
 
-// Para el registro
-public class RegisterRequestDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
+// DTO para el request de registro (ya lo tenías)
+public record RegisterRequestDto(string Name, string Email, string Password, string? Address, string? Phone);
 
-// Para el login
-public class LoginRequestDto
-{
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
+// DTO para el request de inicio de sesión
+public record LoginRequestDto(string Email, string Password);
 
-// Respuesta del login/registro
-public class AuthResponseDto
-{
-    public string Token { get; set; } = string.Empty;
-    public UserDto User { get; set; } = null!;
-}
+// DTO para devolver los datos del usuario de forma segura
+public record UserDto(int Id, string Name, string Email, string? Address, string? Phone, string Role);
 
-public class UserDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-}
+// DTO para la respuesta de autenticación exitosa
+public record AuthResponseDto(string Token, UserDto User);

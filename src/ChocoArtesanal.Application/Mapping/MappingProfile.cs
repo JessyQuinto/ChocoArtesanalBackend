@@ -14,6 +14,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ProducerName, opt => opt.MapFrom(src => src.Producer.Name));
         CreateMap<ProductDto, Product>();
 
+        CreateMap<User, UserDto>();
+
         // Category Mappings
         CreateMap<Category, CategoryDto>();
         CreateMap<CategoryDto, Category>();
