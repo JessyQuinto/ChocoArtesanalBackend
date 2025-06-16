@@ -3,53 +3,59 @@ using ChocoArtesanal.Domain.Entities;
 using ChocoArtesanal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChocoArtesanal.Infrastructure.Repositories;
-
-public class ProductRepository : IProductRepository
+namespace ChocoArtesanal.Infrastructure.Repositories
 {
-    private readonly ApplicationDbContext _context;
-
-    public ProductRepository(ApplicationDbContext context)
+    public class ProductRepository : IProductRepository
     {
-        _context = context;
-    }
+        private readonly ApplicationDbContext _context;
 
-    public async Task<IEnumerable<Product>> GetAllAsync()
-    {
-        return await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Producer)
-            .ToListAsync();
-    }
-
-    public async Task<Product?> GetByIdAsync(int id)
-    {
-        return await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Producer)
-            .FirstOrDefaultAsync(p => p.Id == id);
-    }
-
-    public async Task<Product> AddAsync(Product product)
-    {
-        await _context.Products.AddAsync(product);
-        await _context.SaveChangesAsync();
-        return product;
-    }
-
-    public async Task UpdateAsync(Product product)
-    {
-        _context.Entry(product).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var product = await _context.Products.FindAsync(id);
-        if (product != null)
+        public ProductRepository(ApplicationDbContext context)
         {
-            _context.Products.Remove(product);
+            _context = context;
+        }
+
+        public async Task<IEnumerable<Product>> GetAllAsync()
+        {
+            return await _context.Products
+                                 .Include(p => p.Category)
+                                 .Include(p => p.Producer)
+                                 .ToListAsync();
+        }
+
+        public async Task<Product> GetByIdAsync(int id)
+        {
+            return await _context.Products
+                                 .Include(p => p.Category)
+                                 .Include(p => p.Producer)
+                                 .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<Product> AddAsync(Product product)
+        {
+            await _context.Products.AddAsync(product);
             await _context.SaveChangesAsync();
+            return product;
+        }
+
+        public async Task UpdateAsync(Product product)
+        {
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+            if (product != null)
+            {
+                _context.Products.Remove(product);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Product>> GetByIdsAsync(List<int> ids)
+        {
+            return await _context.Products.Where(p => ids.Contains(p.Id)).ToListAsync();
         }
     }
 }

@@ -1,12 +1,8 @@
-﻿using AutoMapper;
-using ChocoArtesanal.Application.Dtos;
+﻿using ChocoArtesanal.Application.Dtos;
 using ChocoArtesanal.Application.Interfaces;
-using ChocoArtesanal.Domain.Entities;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using System.Threading.Tasks;
 
 namespace ChocoArtesanal.API.Controllers
 {
@@ -14,89 +10,47 @@ namespace ChocoArtesanal.API.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _config;
-        private readonly IMapper _mapper;
+        private readonly IAuthService _authService;
+        private readonly IValidator<RegisterRequestDto> _registerValidator;
 
-        public AuthController(IUserRepository userRepository, IConfiguration config, IMapper mapper)
+        public AuthController(IAuthService authService, IValidator<RegisterRequestDto> registerValidator)
         {
-            _userRepository = userRepository;
-            _config = config;
-            _mapper = mapper;
+            _authService = authService;
+            _registerValidator = registerValidator;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequestDto request)
         {
-            // 1. Verificar si el correo electrónico ya está en uso
-            if (await _userRepository.GetByEmailAsync(request.Email) != null)
+            var validationResult = await _registerValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
             {
-                return BadRequest("El correo electrónico ya está registrado.");
+                return BadRequest(validationResult.Errors);
             }
 
-            // 2. Hashear la contraseña
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            // 3. Crear la nueva entidad de Usuario
-            var user = new User
+            try
             {
-                Name = request.Name,
-                Email = request.Email,
-                PasswordHash = passwordHash,
-                Address = request.Address,
-                Phone = request.Phone,
-                Role = "Cliente" // Rol por defecto
-            };
-
-            // 4. Guardar el usuario en la base de datos
-            await _userRepository.AddAsync(user);
-
-            return Ok(new { message = "Usuario registrado exitosamente." });
+                var user = await _authService.RegisterAsync(request);
+                return Ok(new { user.Id, user.Name, user.Email });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)
         {
-            // 1. Buscar al usuario por su correo electrónico
-            var user = await _userRepository.GetByEmailAsync(request.Email);
-
-            // 2. Verificar si el usuario existe y si la contraseña es correcta
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            try
             {
-                return Unauthorized("Credenciales inválidas.");
+                var token = await _authService.LoginAsync(request);
+                return Ok(new { token });
             }
-
-            // 3. Generar el Token JWT
-            var token = GenerateJwtToken(user);
-
-            // 4. Mapear el usuario a un DTO para la respuesta
-            var userDto = _mapper.Map<UserDto>(user);
-
-            return Ok(new AuthResponseDto(token, userDto));
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            // Crear los claims (información que viaja en el token)
-            var claims = new[]
+            catch (ApplicationException ex)
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddHours(3), // Duración del token
-                signingCredentials: credentials);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

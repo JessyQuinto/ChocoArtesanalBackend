@@ -1,18 +1,23 @@
-﻿namespace ChocoArtesanal.Domain.Entities;
+﻿using System;
+using System.Collections.Generic;
 
-public class Order
+namespace ChocoArtesanal.Domain.Entities
 {
-    public int Id { get; set; }
-    public string Status { get; set; } = "pending";
-    public decimal Total { get; set; }
-    public string? ShippingAddress { get; set; }
-    public string? PaymentMethod { get; set; }
-    public string PaymentStatus { get; set; } = "pending";
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public class Order
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public User User { get; set; }
 
-    public int UserId { get; set; }
-    public User? User { get; set; }
+        public string Status { get; set; }
 
-    public List<OrderDetail> OrderDetails { get; set; } = new();
+        public decimal Total { get; set; }
+        public string ShippingAddress { get; set; }
+        public string PaymentMethod { get; set; }
+        public string PaymentStatus { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<OrderDetail> OrderDetails { get; set; }
+    }
 }

@@ -2,39 +2,45 @@
 using ChocoArtesanal.Domain.Entities;
 using ChocoArtesanal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace ChocoArtesanal.Infrastructure.Repositories;
-
-public class OrderRepository : IOrderRepository
+namespace ChocoArtesanal.Infrastructure.Repositories
 {
-    private readonly ApplicationDbContext _context;
-
-    public OrderRepository(ApplicationDbContext context)
+    public class OrderRepository : IOrderRepository
     {
-        _context = context;
-    }
+        private readonly ApplicationDbContext _context;
 
-    public async Task<Order> AddAsync(Order order)
-    {
-        await _context.Orders.AddAsync(order);
-        await _context.SaveChangesAsync();
-        return order;
-    }
+        public OrderRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-    public async Task<Order?> GetByIdAsync(int id)
-    {
-        return await _context.Orders
-            .Include(o => o.OrderDetails)
-            .ThenInclude(od => od.Product)
-            .FirstOrDefaultAsync(o => o.Id == id);
-    }
+        // Implementación del método AddAsync
+        public async Task AddAsync(Order order)
+        {
+            await _context.Orders.AddAsync(order);
+            await _context.SaveChangesAsync();
+        }
 
-    public async Task<IEnumerable<Order>> GetByUserIdAsync(int userId)
-    {
-        return await _context.Orders
-            .Where(o => o.UserId == userId)
-            .Include(o => o.OrderDetails)
-            .ThenInclude(od => od.Product)
-            .ToListAsync();
+        // Implementación del método GetAllAsync (con corrección de OrderDate a CreatedAt)
+        public async Task<IEnumerable<Order>> GetAllAsync()
+        {
+            return await _context.Orders
+                .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.Product)
+                .OrderByDescending(x => x.CreatedAt) // <-- CORRECCIÓN AQUÍ
+                .ToListAsync();
+        }
+
+        // Implementación del método GetByIdAsync
+        public async Task<Order> GetByIdAsync(int id)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.Product)
+                .FirstOrDefaultAsync(o => o.Id == id);
+        }
     }
 }

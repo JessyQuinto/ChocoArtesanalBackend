@@ -30,5 +30,9 @@ public class MappingProfile : Profile
         // User/Auth Mappings
         CreateMap<User, UserDto>();
         CreateMap<RegisterRequestDto, User>();
+
+        CreateMap<Producer, ProducerDto>();
+        CreateMap<CreateProducerDto, Producer>();
+        CreateMap<UpdateProducerDto, Producer>();
     }
 }

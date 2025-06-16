@@ -1,12 +1,15 @@
 ﻿using ChocoArtesanal.Domain.Entities;
 
-namespace ChocoArtesanal.Application.Interfaces;
-
-public interface IProductRepository
+namespace ChocoArtesanal.Application.Interfaces
 {
-    Task<IEnumerable<Product>> GetAllAsync();
-    Task<Product?> GetByIdAsync(int id);
-    Task<Product> AddAsync(Product product);
-    Task UpdateAsync(Product product);
-    Task DeleteAsync(int id);
+    public interface IProductRepository
+    {
+        Task<IEnumerable<Product>> GetAllAsync();
+        Task<Product> GetByIdAsync(int id);
+        Task<Product> AddAsync(Product product);
+        Task UpdateAsync(Product product);
+        Task DeleteAsync(int id);
+        Task<List<Product>> GetByIdsAsync(List<int> ids);
+
+    }
 }
