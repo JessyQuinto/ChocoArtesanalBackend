@@ -1,12 +1,9 @@
 ﻿using ChocoArtesanal.Application.Dtos;
-using ChocoArtesanal.Domain.Entities;
-using System.Threading.Tasks;
 
-namespace ChocoArtesanal.Application.Interfaces
+namespace ChocoArtesanal.Application.Interfaces;
+
+public interface IAuthService
 {
-    public interface IAuthService
-    {
-        Task<User> RegisterAsync(RegisterRequestDto request);
-        Task<string> LoginAsync(LoginRequestDto request);
-    }
+    Task<bool> Register(RegisterRequestDto request);
+    Task<LoginResponseDto?> Login(LoginRequestDto request);
 }

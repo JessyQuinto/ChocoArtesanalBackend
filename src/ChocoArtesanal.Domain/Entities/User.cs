@@ -8,7 +8,9 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string? Address { get; set; }
     public string? Phone { get; set; }
-    public string Role { get; set; } = "Customer";
+
+    // Propiedad agregada para corregir el error
+    public DateTime CreatedAt { get; set; }
 
     public ICollection<Order> Orders { get; set; } = new List<Order>();
 }

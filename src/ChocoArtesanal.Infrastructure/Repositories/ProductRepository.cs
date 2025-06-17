@@ -3,59 +3,89 @@ using ChocoArtesanal.Domain.Entities;
 using ChocoArtesanal.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChocoArtesanal.Infrastructure.Repositories
+namespace ChocoArtesanal.Infrastructure.Repositories;
+
+public class ProductRepository(ApplicationDbContext context) : IProductRepository
 {
-    public class ProductRepository : IProductRepository
+    public async Task<Product> CreateAsync(Product product)
     {
-        private readonly ApplicationDbContext _context;
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+        return product;
+    }
 
-        public ProductRepository(ApplicationDbContext context)
+    public async Task DeleteAsync(int id)
+    {
+        var product = await context.Products.FindAsync(id);
+        if (product != null)
         {
-            _context = context;
+            context.Products.Remove(product);
+            await context.SaveChangesAsync();
+        }
+    }    public async Task<IEnumerable<Product>> GetAllAsync()
+    {
+        return await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Product>> GetAllAsync(int? categoryId, string? search)
+    {
+        var query = context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .AsQueryable();
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(p => p.CategoryId == categoryId.Value);
         }
 
-        public async Task<IEnumerable<Product>> GetAllAsync()
+        if (!string.IsNullOrEmpty(search))
         {
-            return await _context.Products
-                                 .Include(p => p.Category)
-                                 .Include(p => p.Producer)
-                                 .ToListAsync();
+            query = query.Where(p => p.Name.Contains(search) || 
+                                   p.Description.Contains(search));
         }
 
-        public async Task<Product> GetByIdAsync(int id)
-        {
-            return await _context.Products
-                                 .Include(p => p.Category)
-                                 .Include(p => p.Producer)
-                                 .FirstOrDefaultAsync(p => p.Id == id);
-        }
+        return await query.ToListAsync();
+    }    public async Task<Product?> GetByIdAsync(int id)
+    {
+        return await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
 
-        public async Task<Product> AddAsync(Product product)
-        {
-            await _context.Products.AddAsync(product);
-            await _context.SaveChangesAsync();
-            return product;
-        }
+    public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> ids)
+    {
+        return await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync();
+    }
 
-        public async Task UpdateAsync(Product product)
-        {
-            _context.Products.Update(product);
-            await _context.SaveChangesAsync();
-        }
+    public async Task<Product?> GetBySlugAsync(string slug)
+    {
+        return await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .FirstOrDefaultAsync(p => p.Slug == slug);
+    }
 
-        public async Task DeleteAsync(int id)
-        {
-            var product = await _context.Products.FindAsync(id);
-            if (product != null)
-            {
-                _context.Products.Remove(product);
-                await _context.SaveChangesAsync();
-            }
-        }
+    public async Task<IEnumerable<Product>> GetFeaturedAsync()
+    {
+        return await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Producer)
+            .Where(p => p.Featured)
+            .ToListAsync();
+    }
 
-        public async Task<List<Product>> GetByIdsAsync(List<int> ids)
-        {
-            return await _context.Products.Where(p => ids.Contains(p.Id)).ToListAsync();
-        }
+    public async Task UpdateAsync(Product product)
+    {
+        context.Entry(product).State = EntityState.Modified;
+        await context.SaveChangesAsync();
     }
 }

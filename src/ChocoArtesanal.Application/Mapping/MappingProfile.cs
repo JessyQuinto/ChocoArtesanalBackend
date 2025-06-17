@@ -7,32 +7,18 @@ namespace ChocoArtesanal.Application.Mapping;
 public class MappingProfile : Profile
 {
     public MappingProfile()
-    {
-        // Product Mappings
+    {        CreateMap<Category, CategoryDto>().ReverseMap();
         CreateMap<Product, ProductDto>()
-            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
-            .ForMember(dest => dest.ProducerName, opt => opt.MapFrom(src => src.Producer.Name));
-        CreateMap<ProductDto, Product>();
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
+            .ForMember(dest => dest.ProducerName, opt => opt.MapFrom(src => src.Producer != null ? src.Producer.Name : string.Empty));
+        CreateMap<Producer, ProducerDto>().ReverseMap();CreateMap<User, UserDto>().ReverseMap();
+        CreateMap<UpdateUserDto, User>()
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
-        CreateMap<User, UserDto>();
-
-        // Category Mappings
-        CreateMap<Category, CategoryDto>();
-        CreateMap<CategoryDto, Category>();
-
-        // Order Mappings
-        CreateMap<OrderDetail, OrderDetailDto>();
-        CreateMap<CreateOrderDetailDto, OrderDetail>();
-
-        CreateMap<Order, OrderDto>();
         CreateMap<CreateOrderRequestDto, Order>();
-
-        // User/Auth Mappings
-        CreateMap<User, UserDto>();
-        CreateMap<RegisterRequestDto, User>();
-
-        CreateMap<Producer, ProducerDto>();
-        CreateMap<CreateProducerDto, Producer>();
-        CreateMap<UpdateProducerDto, Producer>();
+        CreateMap<CreateOrderDetailDto, OrderDetail>();
+        CreateMap<Order, OrderDto>();
+        CreateMap<OrderDetail, OrderDetailDto>()
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty));
     }
 }

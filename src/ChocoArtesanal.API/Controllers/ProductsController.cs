@@ -1,94 +1,40 @@
 ﻿using AutoMapper;
 using ChocoArtesanal.Application.Dtos;
 using ChocoArtesanal.Application.Interfaces;
-using ChocoArtesanal.Domain.Entities;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChocoArtesanal.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
-public class ProductsController : ControllerBase
-{
-    private readonly IProductRepository _productRepository;
-    private readonly IMapper _mapper;
-
-    public ProductsController(IProductRepository productRepository, IMapper mapper)
+public class ProductsController(IProductRepository productRepository, IMapper mapper) : ControllerBase
+{    [HttpGet]
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetAll([FromQuery] int? categoryId, [FromQuery] string? search)
     {
-        _productRepository = productRepository;
-        _mapper = mapper;
+        var products = await productRepository.GetAllAsync(categoryId, search);
+        return Ok(mapper.Map<IEnumerable<ProductDto>>(products));
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetProducts()
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ProductDto>> GetById(int id)
     {
-        var products = await _productRepository.GetAllAsync();
-        var productDtos = _mapper.Map<IEnumerable<ProductDto>>(products);
-        return Ok(productDtos);
+        var product = await productRepository.GetByIdAsync(id);
+        if (product == null) return NotFound();
+        return Ok(mapper.Map<ProductDto>(product));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetProduct(int id)
+    [HttpGet("{slug}")]
+    public async Task<ActionResult<ProductDto>> GetBySlug(string slug)
     {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
-        var productDto = _mapper.Map<ProductDto>(product);
-        return Ok(productDto);
+        var product = await productRepository.GetBySlugAsync(slug);
+        if (product == null) return NotFound();
+        return Ok(mapper.Map<ProductDto>(product));
     }
 
-    [HttpPost]
-    [Authorize(Roles = "Admin")] // Solo los administradores pueden crear productos
-    public async Task<IActionResult> CreateProduct([FromBody] ProductDto productDto)
+    [HttpGet("featured")]
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetFeatured()
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        var product = _mapper.Map<Product>(productDto);
-        var createdProduct = await _productRepository.AddAsync(product);
-        var createdProductDto = _mapper.Map<ProductDto>(createdProduct);
-
-        return CreatedAtAction(nameof(GetProduct), new { id = createdProductDto.Id }, createdProductDto);
-    }
-
-    [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductDto productDto)
-    {
-        if (id != productDto.Id)
-        {
-            return BadRequest("Product ID mismatch");
-        }
-
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
-
-        _mapper.Map(productDto, product);
-        await _productRepository.UpdateAsync(product);
-
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> DeleteProduct(int id)
-    {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
-
-        await _productRepository.DeleteAsync(id);
-        return NoContent();
+        var products = await productRepository.GetFeaturedAsync();
+        return Ok(mapper.Map<IEnumerable<ProductDto>>(products));
     }
 }

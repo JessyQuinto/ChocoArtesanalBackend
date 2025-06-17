@@ -5,24 +5,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChocoArtesanal.Infrastructure.Repositories;
 
-public class UserRepository : IUserRepository
+public class UserRepository(ApplicationDbContext context) : IUserRepository
 {
-    private readonly ApplicationDbContext _context;
-
-    public UserRepository(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<User?> GetByEmailAsync(string email)
     {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        return await context.Users.FirstOrDefaultAsync(u => u.Email == email);
     }
 
-    public async Task<User> AddAsync(User user)
+    // Implementación de método agregado
+    public async Task<User?> GetByIdAsync(int id)
     {
-        await _context.Users.AddAsync(user);
-        await _context.SaveChangesAsync();
+        return await context.Users.FindAsync(id);
+    }
+
+    // Implementación de método agregado
+    public async Task<User> CreateAsync(User user)
+    {
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
         return user;
+    }
+
+    // Implementación de método agregado
+    public async Task UpdateAsync(User user)
+    {
+        context.Entry(user).State = EntityState.Modified;
+        await context.SaveChangesAsync();
     }
 }

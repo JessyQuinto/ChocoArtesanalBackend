@@ -1,47 +1,69 @@
-﻿using ChocoArtesanal.Application.Interfaces;
+﻿using ChocoArtesanal.Application.Dtos;
+using ChocoArtesanal.Application.Interfaces;
 using ChocoArtesanal.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
-namespace ChocoArtesanal.API.Controllers
+namespace ChocoArtesanal.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class CartController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize] // Requiere autenticación
-    public class CartController : ControllerBase
+    private readonly ICartRepository _cartRepository;
+
+    public CartController(ICartRepository cartRepository)
     {
-        private readonly ICartRepository _cartRepository;
+        _cartRepository = cartRepository;
+    }
 
-        public CartController(ICartRepository cartRepository)
+    [HttpGet]
+    public async Task<IActionResult> GetCart()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
         {
-            _cartRepository = cartRepository;
+            return Unauthorized();
         }
 
-        [HttpGet]
-        public async Task<ActionResult<Cart>> GetCart()
+        var cart = await _cartRepository.GetCartAsync(userId);
+        return Ok(cart ?? new Cart(userId));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SaveCart([FromBody] SaveCartDto cartDto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var cart = await _cartRepository.GetCartAsync(userId);
-            return Ok(cart ?? new Cart(userId));
+            return Unauthorized();
         }
 
-        [HttpPost]
-        public async Task<ActionResult<Cart>> UpdateCart(Cart cart)
+        var cart = new Cart(userId);
+        cart.Items = cartDto.Items.Select(item => new CartItem
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            cart.UserId = userId; // Asegura que el carrito pertenece al usuario autenticado
-            var updatedCart = await _cartRepository.UpdateCartAsync(cart);
-            return Ok(updatedCart);
+            ProductId = item.ProductId,
+            ProductName = item.ProductName,
+            Price = item.Price,
+            Quantity = item.Quantity
+        }).ToList();
+
+        await _cartRepository.SaveCartAsync(cart);
+        return Ok(new { Message = "Cart saved successfully." });
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> ClearCart()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
         }
 
-        [HttpDelete]
-        public async Task<IActionResult> DeleteCart()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _cartRepository.DeleteCartAsync(userId);
-            return NoContent();
-        }
+        await _cartRepository.DeleteCartAsync(userId);
+        return Ok(new { Message = "Cart cleared successfully." });
     }
 }

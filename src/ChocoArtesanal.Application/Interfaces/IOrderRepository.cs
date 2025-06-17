@@ -7,7 +7,8 @@ namespace ChocoArtesanal.Application.Interfaces
     public interface IOrderRepository
     {
         Task<IEnumerable<Order>> GetAllAsync();
-        Task<Order> GetByIdAsync(int id); // <--- AÑADE ESTE MÉTODO
+        Task<IEnumerable<Order>> GetByUserIdAsync(int userId);
+        Task<Order?> GetByIdAsync(int id); // <--- AÑADE ESTE MÉTODO
         Task AddAsync(Order order);     // <--- AÑADE ESTE MÉTODO
     }
 }

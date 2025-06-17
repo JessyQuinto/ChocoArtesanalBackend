@@ -1,82 +1,68 @@
-﻿using ChocoArtesanal.Application.Dtos;
+﻿using AutoMapper;
+using ChocoArtesanal.Application.Dtos;
 using ChocoArtesanal.Application.Interfaces;
 using ChocoArtesanal.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace ChocoArtesanal.Application.Services
+namespace ChocoArtesanal.Application.Services;
+
+public class AuthService(IUserRepository userRepository, IConfiguration configuration, IMapper mapper) : IAuthService
 {
-    public class AuthService : IAuthService
+    public async Task<LoginResponseDto?> Login(LoginRequestDto request)
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _configuration;
+        var user = await userRepository.GetByEmailAsync(request.Email);
 
-        public AuthService(IUserRepository userRepository, IConfiguration configuration)
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            _userRepository = userRepository;
-            _configuration = configuration;
+            return null;
         }
 
-        public async Task<User> RegisterAsync(RegisterRequestDto request)
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(configuration["Jwt:Key"]!);
+        var tokenDescriptor = new SecurityTokenDescriptor
         {
-            var existingUser = await _userRepository.GetByEmailAsync(request.Email);
-            if (existingUser != null)
-            {
-                throw new ApplicationException("User with this email already exists.");
-            }
-
-            var user = new User
-            {
-                Name = request.Name,
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = "Customer" // Default role
-            };
-
-            await _userRepository.AddAsync(user);
-            return user;
-        }
-
-        public async Task<string> LoginAsync(LoginRequestDto request)
-        {
-            var user = await _userRepository.GetByEmailAsync(request.Email);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            {
-                throw new ApplicationException("Invalid credentials.");
-            }
-
-            return GenerateJwtToken(user);
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var claims = new List<Claim>
+            Subject = new ClaimsIdentity(new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Email),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+                new Claim(ClaimTypes.Email, user.Email)
+            }),
+            Expires = DateTime.UtcNow.AddDays(7),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+            Issuer = configuration["Jwt:Issuer"],
+            Audience = configuration["Jwt:Audience"]
+        };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:ExpireDays"]));
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: expires,
-                signingCredentials: creds
-            );
+        var userDto = mapper.Map<UserDto>(user);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        return new LoginResponseDto(tokenString, userDto);
+    }
+
+    public async Task<bool> Register(RegisterRequestDto request)
+    {
+        var existingUser = await userRepository.GetByEmailAsync(request.Email);
+        if (existingUser != null)
+        {
+            return false;
         }
+
+        var user = new User
+        {
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Address = request.Address,
+            Phone = request.Phone,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await userRepository.CreateAsync(user);
+        return true;
     }
 }

@@ -1,56 +1,39 @@
 ﻿using ChocoArtesanal.Application.Dtos;
 using ChocoArtesanal.Application.Interfaces;
-using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
-namespace ChocoArtesanal.API.Controllers
+namespace ChocoArtesanal.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController(IAuthService authService) : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(RegisterRequestDto request)
     {
-        private readonly IAuthService _authService;
-        private readonly IValidator<RegisterRequestDto> _registerValidator;
-
-        public AuthController(IAuthService authService, IValidator<RegisterRequestDto> registerValidator)
+        var success = await authService.Register(request);
+        if (!success)
         {
-            _authService = authService;
-            _registerValidator = registerValidator;
+            return BadRequest("User with this email already exists.");
         }
+        return Ok("User registered successfully.");
+    }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequestDto request)
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponseDto>> Login(LoginRequestDto request)
+    {
+        var response = await authService.Login(request);
+        if (response == null)
         {
-            var validationResult = await _registerValidator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                return BadRequest(validationResult.Errors);
-            }
-
-            try
-            {
-                var user = await _authService.RegisterAsync(request);
-                return Ok(new { user.Id, user.Name, user.Email });
-            }
-            catch (ApplicationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            return Unauthorized("Invalid credentials.");
         }
+        return Ok(response);
+    }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequestDto request)
-        {
-            try
-            {
-                var token = await _authService.LoginAsync(request);
-                return Ok(new { token });
-            }
-            catch (ApplicationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        // En una implementación real, aquí se invalidaría el token (ej. con una blacklist)
+        return Ok("Logged out successfully.");
     }
 }

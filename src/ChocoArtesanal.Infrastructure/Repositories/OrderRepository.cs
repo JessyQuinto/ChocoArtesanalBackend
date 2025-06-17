@@ -32,15 +32,24 @@ namespace ChocoArtesanal.Infrastructure.Repositories
                 .ThenInclude(od => od.Product)
                 .OrderByDescending(x => x.CreatedAt) // <-- CORRECCIÓN AQUÍ
                 .ToListAsync();
-        }
-
-        // Implementación del método GetByIdAsync
-        public async Task<Order> GetByIdAsync(int id)
+        }        // Implementación del método GetByIdAsync
+        public async Task<Order?> GetByIdAsync(int id)
         {
             return await _context.Orders
                 .Include(o => o.OrderDetails)
                 .ThenInclude(od => od.Product)
                 .FirstOrDefaultAsync(o => o.Id == id);
+        }
+
+        // Nuevo método para obtener órdenes por usuario
+        public async Task<IEnumerable<Order>> GetByUserIdAsync(int userId)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.Product)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
         }
     }
 }

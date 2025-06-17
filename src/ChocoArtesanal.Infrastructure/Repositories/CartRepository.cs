@@ -13,9 +13,7 @@ namespace ChocoArtesanal.Infrastructure.Repositories
         public CartRepository(IDistributedCache redisCache)
         {
             _redisCache = redisCache;
-        }
-
-        public async Task<Cart> GetCartAsync(string userId)
+        }        public async Task<Cart?> GetCartAsync(string userId)
         {
             var cart = await _redisCache.GetStringAsync(userId);
             if (string.IsNullOrEmpty(cart))
@@ -25,10 +23,16 @@ namespace ChocoArtesanal.Infrastructure.Repositories
             return JsonSerializer.Deserialize<Cart>(cart);
         }
 
+        public async Task<Cart> SaveCartAsync(Cart cart)
+        {
+            await _redisCache.SetStringAsync(cart.UserId, JsonSerializer.Serialize(cart));
+            return cart;
+        }
+
         public async Task<Cart> UpdateCartAsync(Cart cart)
         {
             await _redisCache.SetStringAsync(cart.UserId, JsonSerializer.Serialize(cart));
-            return await GetCartAsync(cart.UserId);
+            return cart;
         }
 
         public async Task DeleteCartAsync(string userId)

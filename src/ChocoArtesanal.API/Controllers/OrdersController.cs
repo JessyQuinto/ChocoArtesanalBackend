@@ -43,9 +43,7 @@ namespace ChocoArtesanal.API.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-        }
-
-        [HttpGet("{id}")]
+        }        [HttpGet("{id}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
             var order = await _orderRepository.GetByIdAsync(id);
@@ -54,6 +52,17 @@ namespace ChocoArtesanal.API.Controllers
                 return NotFound();
             }
             return Ok(_mapper.Map<OrderDto>(order));
+        }        [HttpGet]
+        public async Task<IActionResult> GetUserOrders()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var orders = await _orderRepository.GetByUserIdAsync(int.Parse(userId));
+            return Ok(_mapper.Map<IEnumerable<OrderDto>>(orders));
         }
     }
 }
